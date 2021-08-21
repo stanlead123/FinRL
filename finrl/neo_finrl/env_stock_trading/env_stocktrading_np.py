@@ -10,14 +10,11 @@ class StockTradingEnv(gym.Env):
                  max_stock=1e2, initial_capital=1e6, buy_cost_pct=1e-3, 
                  sell_cost_pct=1e-3,reward_scaling=2 ** -11,  initial_stocks=None,
                  ):
-        price_ary = config['price_ary']
-        tech_ary = config['tech_ary']
-        turbulence_ary = config['turbulence_ary']
+        price_ary = config['price_array']
+        tech_ary = config['tech_array']
+        turbulence_ary = config['turbulence_array']
         if_train = config['if_train']
         n = price_ary.shape[0]
-        price_ary = price_ary[int(0.1*n):]
-        tech_ary = tech_ary[int(0.1*n):]
-        turbulence_ary = turbulence_ary[int(0.1*n):]
         self.price_ary =  price_ary.astype(np.float32)
         self.tech_ary = tech_ary.astype(np.float32)
         self.turbulence_ary = turbulence_ary
@@ -53,19 +50,26 @@ class StockTradingEnv(gym.Env):
         self.stocks_cd = None
         self.action_dim = stock_dim
         self.max_step = self.price_ary.shape[0] - 1
+        self.if_train = if_train
         self.if_discrete = False
-        self.target_return = 2.2
+        self.target_return = 10.0
         self.episode_return = 0.0
         
         self.observation_space = gym.spaces.Box(low=-3000, high=3000, shape=(self.state_dim,), dtype=np.float32)
         self.action_space = gym.spaces.Box(low=-1, high=1, shape=(self.action_dim,), dtype=np.float32)
+        
     def reset(self):
         self.day = 0
         price = self.price_ary[self.day]
-
-        self.stocks = (self.initial_stocks + rd.randint(0, 64, size=self.initial_stocks.shape)).astype(np.float32)
-        self.stocks_cd = np.zeros_like(self.stocks)
-        self.amount = self.initial_capital * rd.uniform(0.95, 1.05) - (self.stocks * price).sum()
+        
+        if self.if_train:
+            self.stocks = (self.initial_stocks + rd.randint(0, 64, size=self.initial_stocks.shape)).astype(np.float32)
+            self.stocks_cd = np.zeros_like(self.stocks)
+            self.amount = self.initial_capital * rd.uniform(0.95, 1.05) - (self.stocks * price).sum()
+        else:
+            self.stocks = self.initial_stocks.astype(np.float32)
+            self.stocks_cd = np.zeros_like(self.stocks)
+            self.amount = self.initial_capital
 
         self.total_asset = self.amount + (self.stocks * price).sum()
         self.initial_total_asset = self.total_asset
